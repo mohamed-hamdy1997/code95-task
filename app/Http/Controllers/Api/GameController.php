@@ -9,37 +9,47 @@ class GameController extends Controller
 {
     public function generateTurns(GenerateTurnsRequest $request)
     {
-        $numberOfPlayers = $request->input('players_num', 3);
-        $numberOfTurns = $request->input('turns_num', 3);
-        $startingPlayer = $request->input('starting_player', 'A');
+        $numPlayers = $request->input('players_num', 3);
+        $numTurns = $request->input('turns_num', 3);
+        $startPlayer = $request->input('starting_player', 'A');
 
-        $players = range('A', chr(ord('A') + $numberOfPlayers - 1));
+        $players = range('A', chr(ord('A') + $numPlayers - 1));
 
+        // Find the index of the start player in the players array
+        $startIndex = array_search($startPlayer, $players);
+
+        // Initialize the resulting turns array
         $turns = [];
-
-        for ($i = 0; $i < $numberOfTurns; $i++) {
+        $nextReverse = ($numTurns / ($numTurns % $numPlayers));
+        // Generate the turns based on the specified number of turns
+        for ($i = 0; $i < $numTurns; $i++) {
             $turn = [];
-            $playerIndex = array_search($startingPlayer, $players);
 
-            for ($j = 0; $j < $numberOfPlayers; $j++) {
+            // Add players to the turn in the specified order
+            for ($j = 0; $j < $numPlayers; $j++) {
+                $playerIndex = ($startIndex + $j) % $numPlayers;
                 $turn[] = $players[$playerIndex];
+            }
 
-                $playerIndex++;
-                if ($playerIndex >= $numberOfPlayers) {
-                    $playerIndex = 0;
+            // Update the start index for the next turn
+            if ($i < $nextReverse) {
+                $startIndex = ($startIndex + 1) % $numPlayers;
+            } else {
+                $startIndex = $startIndex - 1;
+                if ($startIndex < 0) {
+                    $nextReverse = ($numTurns / ($numTurns % $numPlayers));
+
+                    $players = array_reverse($players);
+                    $startIndex = array_search($startPlayer, $players);
                 }
             }
 
+            if ($i == $nextReverse) {
+                $startIndex = $numPlayers - 1;
+            }
+
+            // Add the turn to the turns array
             $turns[] = $turn;
-
-            $startingPlayerIndex = array_search($startingPlayer, $players);
-
-            $players = array_merge(
-                array_slice($players, $startingPlayerIndex),
-                array_slice($players, 0, $startingPlayerIndex)
-            );
-
-            $startingPlayer = $players[1] ?? $players[0];
         }
 
         return response()->json($turns);
